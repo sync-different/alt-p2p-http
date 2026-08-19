@@ -103,6 +103,14 @@ CLIENT (B)                                             HOST (A)
   tunnel, stdlib-only client/server (kept in internal/ scratch, not shipped).
 - **Two sessions at once** (m5https + m5ws): one host ran two `serve` processes on two
   sessions simultaneously — the one-client-at-a-time limit is per session, not per host.
+- **First production use** (same day): alt-core's web UI (localhost:8081, the uiv5
+  AngularJS app with its parallel API calls) served from the Mac through the LIVE cloud
+  coordinator (107.174.42.68:9000), browsed from fedora2. Both peers behind one NAT: the
+  coordinator's LAN-endpoint exchange kicked in and the punch went direct over the LAN
+  (`transport=192.168.1.102`) — no hairpin, no relay. "Worked perfectly" (Alejandro).
+  Note the earlier "this Mac drops WAN UDP from bare java" caveat did NOT reproduce —
+  outbound coordination to the cloud worked; the block observed today was inbound (a
+  coordinator ON the Mac never heard LAN peers).
 
 ## Status / not yet done
 
