@@ -55,9 +55,10 @@ mkdir -p "$WEBROOT/nested/deep"
 echo "nested content" > "$WEBROOT/nested/deep/page.txt"
 head -c 2097152 /dev/urandom > "$WEBROOT/blob.bin"     # 2 MB binary
 
-COORD_PID=""; HTTP_PID=""; SERVE_PID=""; CONNECT_PID=""
+COORD_PID=""; HTTP_PID=""; POST_PID=""; SERVE_PID=""; CONNECT_PID=""
+SERVE2_PID=""; CONNECT2_PID=""
 cleanup() {
-  for p in "$CONNECT_PID" "$SERVE_PID" "$HTTP_PID" "$COORD_PID"; do
+  for p in "$CONNECT_PID" "$CONNECT2_PID" "$SERVE_PID" "$SERVE2_PID" "$HTTP_PID" "$POST_PID" "$COORD_PID"; do
     [ -n "$p" ] && kill "$p" 2>/dev/null
   done
 }
@@ -75,6 +76,10 @@ echo "==> local HTTP server (the app being shared)"
 APP_PORT=18123
 ( cd "$WEBROOT" && exec python3 -m http.server "$APP_PORT" --bind 127.0.0.1 ) >"$LOGDIR/http.log" 2>&1 &
 HTTP_PID=$!
+
+echo "==> POST echo server (port 18130)"
+python3 "$ROOT/scripts/post-echo.py" >"$LOGDIR/post.log" 2>&1 &
+POST_PID=$!
 sleep 1
 curl -sf -m 30 "http://127.0.0.1:$APP_PORT/hello.txt" >/dev/null || { echo "app server failed"; exit 1; }
 
@@ -139,6 +144,35 @@ check $CONC_FAIL "8 concurrent fetches all identical"
 # 7. keep-alive reuse: two requests over one curl connection
 curl -sf -m 30 "http://127.0.0.1:$LOCAL_PORT/hello.txt" "http://127.0.0.1:$LOCAL_PORT/hello.txt" -o /dev/null -o /dev/null
 check $? "connection reuse (keep-alive)"
+
+# 8-10. POST through a second session (the POST echo answers sha256+len of the body,
+# so the assertion is end-to-end integrity, not just a 200)
+POST_SESSION="${SESSION}p"
+java -jar "$JAR" serve --port 18130 -s "$POST_SESSION" --psk "$PSK" \
+  --server "127.0.0.1:$PORT" ${EXTRA[@]+"${EXTRA[@]}"} >"$LOGDIR/serve-post.log" 2>&1 &
+SERVE2_PID=$!
+sleep 0.5
+java -jar "$JAR" connect --local-port $((LOCAL_PORT+1)) -s "$POST_SESSION" --psk "$PSK" \
+  --server "127.0.0.1:$PORT" ${EXTRA[@]+"${EXTRA[@]}"} >"$LOGDIR/connect-post.log" 2>&1 &
+CONNECT2_PID=$!
+elapsed=0
+until grep -q "tunnel up" "$LOGDIR/connect-post.log" 2>/dev/null; do
+  sleep 1; elapsed=$((elapsed+1))
+  [ "$elapsed" -ge "$TIMEOUT" ] && break
+done
+PU="http://127.0.0.1:$((LOCAL_PORT+1))/"
+
+want=$(shasum -a 256 "$WEBROOT/blob.bin" | awk '{print $1}')
+got=$(curl -sf -m 60 -X POST --data-binary @"$WEBROOT/blob.bin" \
+      -H "Content-Type: application/octet-stream" "$PU" | awk '{print $1}')
+[ "$got" = "$want" ]; check $? "POST 2 MB body arrives intact (sha256)"
+
+got=$(curl -sf -m 60 -X POST --data-binary @"$WEBROOT/blob.bin" \
+      -H "Transfer-Encoding: chunked" -H "Content-Type: application/octet-stream" "$PU" | awk '{print $1}')
+[ "$got" = "$want" ]; check $? "POST chunked encoding arrives intact"
+
+code=$(curl -s -m 60 -o /dev/null -w "%{http_code}" -F "file=@$WEBROOT/blob.bin" "$PU")
+[ "$code" = "200" ]; check $? "POST multipart upload accepted (got $code)"
 
 echo
 if [ "$FAIL" = "0" ]; then
