@@ -85,7 +85,7 @@ CLIENT (B)                                             HOST (A)
   the pattern appears in it (killing the session, exit 255). Use `[b]racket` patterns or
   run a script file.
 
-## Validation record (0.1.0)
+## Validation record (0.1.0, all 2026-08-19)
 
 - `mvn clean test`: 16/16.
 - `scripts/loopback.sh`: 7/7 checks, direct AND `RELAY=1` (text, nested path, 2 MB binary
@@ -93,8 +93,18 @@ CLIENT (B)                                             HOST (A)
 - Session recycling: two successive clients on one session, second paired in ~1s.
 - Cross-machine (Mac ↔ fedora1 over LAN, real hole punch, direct link in 1.1s): text +
   2 MB blob SHA-256-identical + 6 concurrent fetches identical.
+- **Browser pass** (human, Mac browser → fedora1 python http.server through the tunnel):
+  the alt-lore marketing pages with a 545 KB image + lightbox JS — "works fine".
+- **HTTPS pass-through**: a TLS-wrapped http.server on the far end fetched through the
+  tunnel; `openssl s_client` through the tunnel shows the FAR server's own cert
+  (`CN=fedora1-m5-test`) — TLS terminates at the peer, the tunnel never touches it.
+  The browser cert warning for a self-signed/mismatched cert is expected and correct.
+- **WebSocket**: RFC6455 handshake (101) + masked-frame echo round-trip through the
+  tunnel, stdlib-only client/server (kept in internal/ scratch, not shipped).
+- **Two sessions at once** (m5https + m5ws): one host ran two `serve` processes on two
+  sessions simultaneously — the one-client-at-a-time limit is per session, not per host.
 
 ## Status / not yet done
 
-- HTTPS pass-through check + WebSocket smoke test + browser pass (plan M5).
-- Not yet released; no git remote yet. Plan and spec in `internal/` (gitignored).
+- 0.1.0 feature-complete and validated; not yet released (version still -SNAPSHOT,
+  no tag, no git remote). Plan and spec in `internal/` (gitignored).
