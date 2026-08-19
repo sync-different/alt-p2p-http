@@ -22,8 +22,11 @@ public class ConnectionOptions {
     @Option(names = {"--allow-relay"}, description = "Allow TCP-relay fallback if hole punching fails (recommended).")
     boolean allowRelay;
 
-    @Option(names = {"--relay-mode"}, defaultValue = "tcp", description = "Relay mode: tcp|udp.")
-    String relayMode;
+    /** Validated at parse time — a typo like "tpc" must fail loudly, not flow on silently. */
+    enum RelayMode { tcp, udp }
+
+    @Option(names = {"--relay-mode"}, defaultValue = "tcp", description = "Relay mode: ${COMPLETION-CANDIDATES}.")
+    RelayMode relayMode;
 
     @Option(names = {"--force-relay"}, description = "Skip hole punching, go straight to relay.")
     boolean forceRelay;
@@ -59,7 +62,7 @@ public class ConnectionOptions {
         PeerConnection pc = new PeerConnection(addr, session, psk);
         TransferOptions o = new TransferOptions();
         o.allowRelay = allowRelay;
-        o.relayMode = relayMode;
+        o.relayMode = relayMode.name();
         o.forceRelay = forceRelay;
         o.keepaliveIntervalMs = keepaliveMs;
         o.peerWaitSeconds = peerWaitSeconds;

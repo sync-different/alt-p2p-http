@@ -31,7 +31,7 @@ building here, or this project links a stale jar.
 ## Build & Test
 
 ```bash
-mvn clean test                # 16 unit tests (use `clean` — stale IDE classes have
+mvn clean test                # 20 tests incl. in-JVM tunnel integration (use `clean` — stale IDE classes have
                               # produced false green runs in sibling repos)
 mvn -DskipTests package       # → target/alt-p2p-http-0.1.0-SNAPSHOT.jar (fat jar)
 
@@ -87,9 +87,11 @@ CLIENT (B)                                             HOST (A)
 
 ## Validation record (0.1.0, all 2026-08-19)
 
-- `mvn clean test`: 16/16.
-- `scripts/loopback.sh`: 7/7 checks, direct AND `RELAY=1` (text, nested path, 2 MB binary
-  byte-compare, 404 pass-through, index page, 8 concurrent fetches, keep-alive reuse).
+- `mvn clean test`: 20/20 — incl. LoopbackTunnelTest (in-JVM coord + real serve/connect commands, GET+POST round-trip, exit-code contracts) and ServeLoopTest (retry-with-pause policy).
+- `scripts/loopback.sh`: 10/10 checks, direct AND `RELAY=1` (text, nested path, 2 MB binary
+  byte-compare, 404 pass-through, index page, 8 concurrent fetches, keep-alive reuse, POST
+  2 MB sha256-verified, POST chunked, POST multipart — the POST checks run on a second
+  simultaneous session against scripts/post-echo.py).
 - Session recycling: two successive clients on one session, second paired in ~1s.
 - Cross-machine (Mac ↔ fedora1 over LAN, real hole punch, direct link in 1.1s): text +
   2 MB blob SHA-256-identical + 6 concurrent fetches identical.

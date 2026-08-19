@@ -15,7 +15,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class CliParseTest {
 
     private static CommandLine cli() {
-        return new CommandLine(new Main());
+        // Mirror Main.main()'s configuration — tests must parse the way production parses.
+        return new CommandLine(new Main()).setCaseInsensitiveEnumValuesAllowed(true);
     }
 
     @Test
@@ -69,6 +70,22 @@ class CliParseTest {
                 "--port", "3000");
         ServeCommand sc = (ServeCommand) pr.subcommand().commandSpec().userObject();
         assertEquals(0, sc.peerWaitSeconds);
+    }
+
+    @Test
+    void relayModeTypoIsAParseError() {
+        // "tpc" must fail at the CLI, not flow silently into the transport options.
+        int exit = cli().execute("serve", "--server", "h:9000", "-s", "x", "--psk", "k",
+                "--port", "3000", "--relay-mode", "tpc");
+        assertEquals(2, exit);
+    }
+
+    @Test
+    void relayModeIsCaseInsensitive() {
+        CommandLine.ParseResult pr = cli().parseArgs("connect", "--server", "h:9000", "-s", "x",
+                "--psk", "k", "--relay-mode", "TCP");
+        ConnectCommand cc = (ConnectCommand) pr.subcommand().commandSpec().userObject();
+        assertEquals(ConnectionOptions.RelayMode.tcp, cc.conn.relayMode);
     }
 
     @Test
