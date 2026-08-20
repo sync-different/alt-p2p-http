@@ -103,6 +103,10 @@ CLIENT (B)                                             HOST (A)
   The browser cert warning for a self-signed/mismatched cert is expected and correct.
 - **WebSocket**: RFC6455 handshake (101) + masked-frame echo round-trip through the
   tunnel, stdlib-only client/server (kept in internal/ scratch, not shipped).
+- **Progressive streaming (the LLM-endpoint use case)**: a chunked SSE stream emitting
+  10 chunks at 300ms intervals arrived through the tunnel at ~300ms intervals — the
+  tunnel does not buffer a response into a lump, so remote Ollama/llama.cpp token
+  streaming feels live. (`curl -N` with per-line arrival timestamps, 2.74s spread.)
 - **Two sessions at once** (m5https + m5ws): one host ran two `serve` processes on two
   sessions simultaneously — the one-client-at-a-time limit is per session, not per host.
 - **First production use** (same day): alt-core's web UI (localhost:8081, the uiv5
