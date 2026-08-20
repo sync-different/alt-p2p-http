@@ -18,8 +18,9 @@ class ConnectionOptionsTest {
 
     @Test
     void parsesIpPort() {
-        InetSocketAddress a = ConnectionOptions.parseServer("107.174.42.68:9000");
-        assertEquals("107.174.42.68", a.getHostString());
+        // 203.0.113.0/24 is TEST-NET-3 — a documentation address, not a real coordinator.
+        InetSocketAddress a = ConnectionOptions.parseServer("203.0.113.10:9000");
+        assertEquals("203.0.113.10", a.getHostString());
         assertEquals(9000, a.getPort());
     }
 
